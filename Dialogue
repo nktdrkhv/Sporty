@@ -1,0 +1,31 @@
+using System;
+using Stateless;
+using Stateless.Graph;
+
+namespace Sporty;
+
+public class Dialogue
+{
+    public Person Customer { get; set; }
+
+    public enum Trigger
+    {
+        SetName,
+        SetGender,
+        SetAge,
+        SetWeight,
+        SetEmail,
+    }
+
+    public enum State
+    {
+        Unregistered,
+        Registration,
+        Registered,
+    }
+
+    public Dialogue()
+    {
+
+    }
+}

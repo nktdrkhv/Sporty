@@ -1,0 +1,10 @@
+{
+    "folders": [
+        {
+            "path": "."
+        },
+        {
+            "path": "..\\..\\..\\static\\csharp\\Telegram.Bot.Examples\\Telegram.Bot.Examples.Polling"
+        }
+    ]
+}
