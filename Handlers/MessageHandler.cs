@@ -9,7 +9,6 @@ namespace Sporty.Handlers;
 
 public static class MessageHandler
 {
-
     public static async Task<Message> OnStartCommand(ITelegramBotClient botClient, Message message)
     {
         return null;
@@ -20,12 +19,6 @@ public static class MessageHandler
         return null;
     }
 
-    public static async Task<Message> OnTextEnter(ITelegramBotClient botClient, Message message)
-    {
-        Dialogue.HandleTextInputAsync(message.Chat.Id, message.Text);
-
-
-        return null;
-    }
+    public static async Task<Message> OnTextEnter(ITelegramBotClient botClient, Message message) => await Dialogue.Dialogue.HandleTextInputAsync(message);
 }
 

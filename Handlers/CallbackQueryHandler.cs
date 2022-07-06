@@ -9,8 +9,5 @@ namespace Sporty.Handlers;
 
 public static class CallbackQueryHandler
 {
-    public static async Task<Message> OnButtonPressed(ITelegramBotClient botClient, CallbackQuery callbackQuery)
-    {
-        return null;
-    }
+    public static async Task<Message> OnButtonPressed(ITelegramBotClient botClient, CallbackQuery callbackQuery) => await Dialogue.Dialogue.HandleCallbackQueryAsync(callbackQuery);
 }

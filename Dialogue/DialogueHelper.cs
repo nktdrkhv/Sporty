@@ -9,16 +9,12 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Sporty.Dialogue;
 
-public class DialogueHelper
+public static class DialogueHelper
 {
-    static DialogueHelper()
-    {
+    public static DialogueTrigger ToDialogueTrigger(this string str) => Enum.Parse<DialogueTrigger>(str);
+    public static DialogueState ToDialogueState(this string str) => Enum.Parse<DialogueState>(str);
 
-    }
-
-
-    public enum InlineCallBack { Register, Name, Gender, Weight, Age, Email }
-
+    // --------------------------------------------------------------------------------
 
     public static async Task<Message> SendInlineKeyboard(ITelegramBotClient botClient, Message message)
     {
@@ -29,7 +25,7 @@ public class DialogueHelper
             {
                     new []
                     {
-                        InlineKeyboardButton.WithCallbackData("1.1", DialogueHelper.InlineCallBack.Age.ToString()),
+                        InlineKeyboardButton.WithCallbackData("1.1", DialogueTrigger.EmailChange.ToString()),
                         InlineKeyboardButton.WithCallbackData("1.2", "12"),
                     },
                     new []
