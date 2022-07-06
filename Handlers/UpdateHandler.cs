@@ -5,7 +5,7 @@ using Telegram.Bot.Types.Enums;
 
 namespace Sporty.Handlers;
 
-public class UpdateHandler
+public static class UpdateHandler
 {
     public static Task PollingErrorHandler(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
     {
@@ -46,19 +46,21 @@ public class UpdateHandler
 
         var action = message.Text!.Split(' ')[0] switch
         {
-            "/start" => MessageHandler.OnStart(botClient, message),
-            "/inline" => MessageHandler.SendInlineKeyboard(botClient, message),
+            "/start" => MessageHandler.OnStartCommand(botClient, message),
+            "/menu" => MessageHandler.OnMenuCommand(botClient, message),
+            _ => MessageHandler.OnTextEnter(botClient, message)
         };
 
         Message sentMessage = await action;
 
         Console.WriteLine($"The message was sent with id: {sentMessage.MessageId}");
-
     }
 
 
     private static async Task BotOnCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
+        await CallbackQueryHandler.OnButtonPressed(botClient, callbackQuery);
+
         await botClient.AnswerCallbackQueryAsync(
             callbackQueryId: callbackQuery.Id,
             text: $"Received {callbackQuery.Data}");

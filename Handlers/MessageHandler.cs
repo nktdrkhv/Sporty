@@ -1,40 +1,31 @@
-using Telegram.Bot.Exceptions;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using Telegram.Bot;
+
+using Sporty.Dialogue;
 
 namespace Sporty.Handlers;
 
-public class MessageHandler
+public static class MessageHandler
 {
 
-    public static async Task<Message> OnStart(ITelegramBotClient botClient, Message message)
+    public static async Task<Message> OnStartCommand(ITelegramBotClient botClient, Message message)
     {
         return null;
     }
 
-    public static async Task<Message> SendInlineKeyboard(ITelegramBotClient botClient, Message message)
+    public static async Task<Message> OnMenuCommand(ITelegramBotClient botClient, Message message)
     {
-        await botClient.SendChatActionAsync(message.Chat.Id, ChatAction.Typing);
+        return null;
+    }
 
-        InlineKeyboardMarkup inlineKeyboard = new(
-            new[]
-            {
-                    new []
-                    {
-                        InlineKeyboardButton.WithCallbackData("1.1", "11"),
-                        InlineKeyboardButton.WithCallbackData("1.2", "12"),
-                    },
-                    new []
-                    {
-                        InlineKeyboardButton.WithCallbackData("2.1", "21"),
-                        InlineKeyboardButton.WithCallbackData("2.2", "22"),
-                    },
-            });
+    public static async Task<Message> OnTextEnter(ITelegramBotClient botClient, Message message)
+    {
+        Dialogue.HandleTextInputAsync(message.Chat.Id, message.Text);
 
-        return await botClient.SendTextMessageAsync(chatId: message.Chat.Id,
-                                                    text: "Choose",
-                                                    replyMarkup: inlineKeyboard);
+
+        return null;
     }
 }
+

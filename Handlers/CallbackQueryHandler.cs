@@ -1,12 +1,16 @@
-using Telegram.Bot.Exceptions;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using Telegram.Bot;
+
+using Sporty.Dialogue;
 
 namespace Sporty.Handlers;
 
-public class CallbackQueryHandler
+public static class CallbackQueryHandler
 {
-
+    public static async Task<Message> OnButtonPressed(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+    {
+        return null;
+    }
 }
