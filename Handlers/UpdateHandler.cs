@@ -2,6 +2,7 @@ using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Stateless;
 
 namespace Sporty.Handlers;
 
@@ -30,7 +31,12 @@ public static class UpdateHandler
 
         try
         {
+            Console.WriteLine();
             await handler;
+        }
+        catch (InvalidOperationException)
+        {
+            Console.WriteLine("Необработанное сообщение");
         }
         catch (Exception exception)
         {
@@ -40,7 +46,6 @@ public static class UpdateHandler
 
     private static async Task BotOnMessageAsync(ITelegramBotClient botClient, Message message)
     {
-        Console.WriteLine($"Receive message type: {message.Type}");
         if (message.Type != MessageType.Text)
             return;
 
@@ -51,23 +56,13 @@ public static class UpdateHandler
             _ => MessageHandler.OnTextEnter(botClient, message)
         };
 
-        Message sentMessage = await action;
-
-        Console.WriteLine($"The message was sent with id: {sentMessage.MessageId}");
+        await action;
     }
 
 
     private static async Task BotOnCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
         await CallbackQueryHandler.OnButtonPressed(botClient, callbackQuery);
-
-        await botClient.AnswerCallbackQueryAsync(
-            callbackQueryId: callbackQuery.Id,
-            text: $"Received {callbackQuery.Data}");
-
-        await botClient.SendTextMessageAsync(
-            chatId: callbackQuery.Message!.Chat.Id,
-            text: $"Received {callbackQuery.Data}");
     }
 
     private static Task UnknownUpdateHandlerAsync(ITelegramBotClient botClient, Update update)

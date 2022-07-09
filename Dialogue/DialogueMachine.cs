@@ -5,91 +5,103 @@ namespace Sporty.Dialogue;
 
 public class DialogueMachine
 {
+    private Dialogue _dialogue;
+
     private StateMachine<DialogueState, DialogueTrigger> _stateMachine;
     private StateMachine<DialogueState, DialogueTrigger>.TriggerWithParameters<string> _setPersonDataTrigger;
-    private StateMachine<DialogueState, DialogueTrigger>.TriggerWithParameters<bool> _setPersonDataBoolTrigger;
 
-    private DialogueMachine(StateMachine<DialogueState, DialogueTrigger> stateMachine)
+    public DialogueMachine(Dialogue dialogue)
     {
-        _stateMachine = stateMachine;
+        _dialogue = dialogue;
+
+        _stateMachine = new StateMachine<DialogueState, DialogueTrigger>(DialogueState.Initialization);
         _setPersonDataTrigger = _stateMachine.SetTriggerParameters<string>(DialogueTrigger.PersonDataInput);
-        _setPersonDataBoolTrigger = _stateMachine.SetTriggerParameters<bool>(DialogueTrigger.PersonDataInput);
+
+        Configure();
     }
 
-    public static DialogueMachine Create()
+    // ---------------------- Configurations ----------------------
+
+    public void Configure()
     {
-        var stateMachine = new StateMachine<DialogueState, DialogueTrigger>(DialogueState.Initialization);
-
-        stateMachine.Configure(DialogueState.Initialization)
+        _stateMachine.Configure(DialogueState.Initialization)
             .Permit(DialogueTrigger.IsInDb, DialogueState.Menu)
-            .Permit(DialogueTrigger.IsNotInDb, DialogueState.Unregistered);
+            .Permit(DialogueTrigger.IsNotInDb, DialogueState.Unregistered)
+            .OnActivateAsync(async () => await _dialogue.CheckInDb());
 
-        stateMachine.Configure(DialogueState.Unregistered)
-            .Permit(DialogueTrigger.SignUp, DialogueState.Registration);
+        _stateMachine.Configure(DialogueState.Unregistered)
+            .Permit(DialogueTrigger.SignUp, DialogueState.Registration)
+            .OnEntryAsync(async () =>
+            {
+                await _dialogue.SendWelcomeMessage();
+                await _dialogue.SendRegisterWarningMessage();
+            });
 
-        stateMachine.Configure(DialogueState.NameInput)
-            .SubstateOf(DialogueState.Registration)
-            .Permit(DialogueTrigger.PersonDataInput, DialogueState.GenderInput);
+        ConfigureRegisterSteps();
 
-        stateMachine.Configure(DialogueState.GenderInput)
-            .SubstateOf(DialogueState.Registration)
-            .Permit(DialogueTrigger.PersonDataInput, DialogueState.AgeInput);
-
-        stateMachine.Configure(DialogueState.AgeInput)
-            .SubstateOf(DialogueState.Registration)
-            .Permit(DialogueTrigger.PersonDataInput, DialogueState.HeightInput);
-
-        stateMachine.Configure(DialogueState.HeightInput)
-            .SubstateOf(DialogueState.Registration)
-            .Permit(DialogueTrigger.PersonDataInput, DialogueState.WeightInput);
-
-        stateMachine.Configure(DialogueState.WeightInput)
-            .SubstateOf(DialogueState.Registration)
-            .Permit(DialogueTrigger.PersonDataInput, DialogueState.EmailInput);
-
-        stateMachine.Configure(DialogueState.EmailInput)
-            .SubstateOf(DialogueState.Registration)
-            .Permit(DialogueTrigger.PersonDataInput, DialogueState.Menu);
-
-        stateMachine.Configure(DialogueState.Menu)
+        _stateMachine.Configure(DialogueState.Menu)
             .Permit(DialogueTrigger.WatchPersonalInformation, DialogueState.PersonalInformationView)
             .Permit(DialogueTrigger.ConnectWithCoach, DialogueState.CoachInfoView);
 
-        stateMachine.Configure(DialogueState.PersonalInformationView)
+        _stateMachine.Configure(DialogueState.PersonalInformationView)
             .Permit(DialogueTrigger.BackToMenu, DialogueState.Menu)
             .Permit(DialogueTrigger.EditPersonalInformation, DialogueState.PersonalInformationChange);
 
-        stateMachine.Configure(DialogueState.PersonalInformationChange)
+        _stateMachine.Configure(DialogueState.PersonalInformationChange)
             .Permit(DialogueTrigger.BackToMenu, DialogueState.Menu);
-
-        return new DialogueMachine(stateMachine);
     }
 
-    public async Task ProcessTransition(DialogueTrigger trigger)
+    public void ConfigureRegisterSteps()
     {
-        await _stateMachine.FireAsync(trigger);
+        _stateMachine.Configure(DialogueState.Registration)
+            .InitialTransition(DialogueState.NameInput);
+
+        _stateMachine.Configure(DialogueState.NameInput)
+            .SubstateOf(DialogueState.Registration)
+            .Permit(DialogueTrigger.PersonDataInput, DialogueState.GenderInput)
+            .OnEntryAsync(async (transition) => await _dialogue.SendRegistrationSequence(transition.Destination))
+            .OnEntryFromAsync<string>(_setPersonDataTrigger, async (text) =>
+            {
+                Console.WriteLine($"Обработан ввод:{text}");
+            });
+
+        _stateMachine.Configure(DialogueState.GenderInput)
+            .SubstateOf(DialogueState.Registration)
+            //.Permit(DialogueTrigger.PersonDataInput, DialogueState.AgeInput)
+            .Permit(DialogueTrigger.MaleInput, DialogueState.AgeInput)
+            .Permit(DialogueTrigger.FemaleInput, DialogueState.AgeInput)
+            .OnEntryAsync((transition) => _dialogue.SendRegistrationSequence(transition.Destination));
+
+        _stateMachine.Configure(DialogueState.AgeInput)
+            .SubstateOf(DialogueState.Registration)
+            .Permit(DialogueTrigger.PersonDataInput, DialogueState.HeightInput)
+            .OnEntryAsync((transition) => _dialogue.SendRegistrationSequence(transition.Destination));
+
+        _stateMachine.Configure(DialogueState.HeightInput)
+            .SubstateOf(DialogueState.Registration)
+            .Permit(DialogueTrigger.PersonDataInput, DialogueState.WeightInput)
+            .OnEntryAsync((transition) => _dialogue.SendRegistrationSequence(transition.Destination));
+
+        _stateMachine.Configure(DialogueState.WeightInput)
+            .SubstateOf(DialogueState.Registration)
+            .Permit(DialogueTrigger.PersonDataInput, DialogueState.EmailInput)
+            .OnEntryAsync((transition) => _dialogue.SendRegistrationSequence(transition.Destination));
+
+        _stateMachine.Configure(DialogueState.EmailInput)
+            .SubstateOf(DialogueState.Registration)
+            .Permit(DialogueTrigger.PersonDataInput, DialogueState.Menu)
+            .OnEntryAsync((transition) => _dialogue.SendRegistrationSequence(transition.Destination));
     }
 
-    public async Task ProcessTransition(string text)
-    {
-        await _stateMachine.FireAsync(_setPersonDataTrigger, text);
-    }
+    // ---------------------- Callbacks for dialog ----------------------
 
-}
+    public async Task ActivateStateMachine() => await _stateMachine.ActivateAsync();
 
-public enum DialogueTrigger
-{
-    IsInDb, IsNotInDb,
-    SignUp, PersonDataInput,
-    WatchPersonalInformation, EditPersonalInformation, ConnectWithCoach,
-    NameChange, GenderChange, AgeChange, HeightChange, WeightChange, EmailChange,
-    BackToMenu
-}
+    public async Task FoundInDb() => await _stateMachine.FireAsync(DialogueTrigger.IsInDb);
 
-public enum DialogueState
-{
-    Initialization, Unregistered, Registration,
-    NameInput, GenderInput, AgeInput, HeightInput, WeightInput, EmailInput,
-    PersonalInformationView, PersonalInformationChange, CoachInfoView,
-    Menu
+    public async Task NotFoundInDb() => await _stateMachine.FireAsync(DialogueTrigger.IsNotInDb);
+
+    public async Task ProcessTransition(DialogueTrigger trigger) => await _stateMachine.FireAsync(trigger);
+
+    public async Task ProcessTransition(string text) => await _stateMachine.FireAsync(_setPersonDataTrigger, text);
 }

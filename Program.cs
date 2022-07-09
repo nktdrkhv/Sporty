@@ -4,7 +4,7 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;
 using Sporty.Handlers;
 
-var builder = new ConfigurationBuilder().AddJsonFile($"config.json", true, true);
+var builder = new ConfigurationBuilder().AddJsonFile(Path.Combine(Environment.CurrentDirectory, "config.json"), false, true);
 var config = builder.Build();
 
 var bot = new TelegramBotClient(config["TelegramToken"]);
@@ -18,10 +18,11 @@ var receiverOptions = new ReceiverOptions()
     ThrowPendingUpdates = true,
 };
 
-bot.StartReceiving(updateHandler: UpdateHandler.HandleUpdateAsync,
-                   pollingErrorHandler: UpdateHandler.PollingErrorHandler,
-                   receiverOptions: receiverOptions,
-                   cancellationToken: cts.Token);
+bot.StartReceiving(
+    updateHandler: UpdateHandler.HandleUpdateAsync,
+    pollingErrorHandler: UpdateHandler.PollingErrorHandler,
+    receiverOptions: receiverOptions,
+    cancellationToken: cts.Token);
 
 Console.WriteLine($"Start listening for @{me.Username}");
 Console.ReadLine();

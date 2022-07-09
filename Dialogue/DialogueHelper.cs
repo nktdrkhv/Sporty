@@ -1,6 +1,6 @@
 using System;
 using System.ComponentModel;
-using AutoMapper;
+
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
@@ -16,27 +16,37 @@ public static class DialogueHelper
 
     // --------------------------------------------------------------------------------
 
-    public static async Task<Message> SendInlineKeyboard(ITelegramBotClient botClient, Message message)
-    {
-        await botClient.SendChatActionAsync(message.Chat.Id, ChatAction.Typing);
+    public static string WelcomeText = "Приветсвенное сообщение";
+    public static string RegisterText = "Для начала вам необходимо зарегистрироваться";
+    public static string RegSeqNameText = "Укажите имя";
+    public static string RegSeqGenderText = "Укажите пол";
+    public static string RegSeqAgeText = "Укажите возраст";
+    public static string RegSeqHeightText = "Укажите рост";
+    public static string RegSeqWeightText = "Укажите вес";
+    public static string RegSeqEmailText = "Укажите электронную почту";
+    public static String RegSeqUnknownText = "Произошла ошибка";
 
-        InlineKeyboardMarkup inlineKeyboard = new(
+    public static InlineKeyboardMarkup RegisterIkm;
+    public static InlineKeyboardMarkup GenderIkm;
+
+    static DialogueHelper()
+    {
+        RegisterIkm = new(
             new[]
             {
-                    new []
-                    {
-                        InlineKeyboardButton.WithCallbackData("1.1", DialogueTrigger.EmailChange.ToString()),
-                        InlineKeyboardButton.WithCallbackData("1.2", "12"),
-                    },
-                    new []
-                    {
-                        InlineKeyboardButton.WithCallbackData("2.1", "21"),
-                        InlineKeyboardButton.WithCallbackData("2.2", "22"),
-                    },
+                new []
+                {
+                    InlineKeyboardButton.WithCallbackData("Регистрация", DialogueTrigger.SignUp.ToString())
+                }
             });
-
-        return await botClient.SendTextMessageAsync(chatId: message.Chat.Id,
-                                                    text: "Choose",
-                                                    replyMarkup: inlineKeyboard);
+        GenderIkm = new(
+            new[]
+            {
+                new []
+                {
+                    InlineKeyboardButton.WithCallbackData("М", DialogueTrigger.MaleInput.ToString()),
+                    InlineKeyboardButton.WithCallbackData("Ж", DialogueTrigger.FemaleInput.ToString())
+                }
+            });
     }
 }
