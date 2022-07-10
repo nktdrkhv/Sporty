@@ -16,5 +16,6 @@ public enum DialogueState
     Initialization, Unregistered, Registration,
     NameInput, GenderInput, AgeInput, HeightInput, WeightInput, EmailInput,
     PersonalInformationView, PersonalInformationChange, CoachInfoView,
-    Menu
+    Menu,
+    Null
 }

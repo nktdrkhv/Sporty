@@ -16,18 +16,20 @@ public static class DialogueHelper
 
     // --------------------------------------------------------------------------------
 
-    public static string WelcomeText = "Приветсвенное сообщение";
-    public static string RegisterText = "Для начала вам необходимо зарегистрироваться";
+    public static string WelcomeText = "<i>Приветсвенное сообщение</i>";
+    public static string RegisterText = "Для начала вам необходимо <b>зарегистрироваться</b>";
     public static string RegSeqNameText = "Укажите имя";
     public static string RegSeqGenderText = "Укажите пол";
     public static string RegSeqAgeText = "Укажите возраст";
     public static string RegSeqHeightText = "Укажите рост";
     public static string RegSeqWeightText = "Укажите вес";
     public static string RegSeqEmailText = "Укажите электронную почту";
-    public static String RegSeqUnknownText = "Произошла ошибка";
+    public static string RegSeqUnknownText = "Произошла ошибка";
+    public static string MenuText(string name) => $"<b>Здравствуйте, {name}!</b>\n";
 
     public static InlineKeyboardMarkup RegisterIkm;
     public static InlineKeyboardMarkup GenderIkm;
+    public static InlineKeyboardMarkup MenuIkm;
 
     static DialogueHelper()
     {
@@ -36,7 +38,7 @@ public static class DialogueHelper
             {
                 new []
                 {
-                    InlineKeyboardButton.WithCallbackData("Регистрация", DialogueTrigger.SignUp.ToString())
+                    InlineKeyboardButton.WithCallbackData("<b>Регистрация</b>", DialogueTrigger.SignUp.ToString())
                 }
             });
         GenderIkm = new(
@@ -46,6 +48,18 @@ public static class DialogueHelper
                 {
                     InlineKeyboardButton.WithCallbackData("М", DialogueTrigger.MaleInput.ToString()),
                     InlineKeyboardButton.WithCallbackData("Ж", DialogueTrigger.FemaleInput.ToString())
+                }
+            });
+        MenuIkm = new(
+            new[]
+            {
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("Посмотреть информацию о тренере", DialogueTrigger.ConnectWithCoach.ToString())
+                },
+                new[]
+                {
+                    InlineKeyboardButton.WithCallbackData("Редактировать личные данные", DialogueTrigger.EditPersonalInformation.ToString())
                 }
             });
     }

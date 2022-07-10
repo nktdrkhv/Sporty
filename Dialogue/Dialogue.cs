@@ -84,7 +84,8 @@ public class Dialogue
         await _botClient.SendChatActionAsync(Id, ChatAction.Typing);
         return await _botClient.SendTextMessageAsync(
             chatId: Id,
-            text: DialogueHelper.WelcomeText);
+            text: DialogueHelper.WelcomeText,
+            parseMode: ParseMode.Html);
     }
 
     public async Task<Message> SendRegisterWarningMessage()
@@ -92,7 +93,8 @@ public class Dialogue
         return await _botClient.SendTextMessageAsync(
             chatId: Id,
             text: DialogueHelper.RegisterText,
-            replyMarkup: DialogueHelper.RegisterIkm);
+            replyMarkup: DialogueHelper.RegisterIkm,
+            parseMode: ParseMode.Html);
     }
 
     public async Task<Message> SendRegistrationSequence(DialogueState state)
@@ -118,13 +120,18 @@ public class Dialogue
             default:
                 return await _botClient.SendTextMessageAsync(
                 chatId: Id,
-                text: text);
+                text: text,
+                parseMode: ParseMode.Html);
         }
     }
 
     public async Task<Message> SendMenu()
     {
-        return null;
+        return await _botClient.SendTextMessageAsync(
+            chatId: Id,
+            text: DialogueHelper.MenuText(Customer!.Name),
+            replyMarkup: DialogueHelper.MenuIkm,
+            parseMode: ParseMode.Html);
     }
 
     public async Task<Message> SendCoachInfo()
