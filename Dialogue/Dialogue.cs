@@ -3,7 +3,7 @@ using System.Threading;
 using System.Collections.Concurrent;
 using Stateless;
 using Stateless.Graph;
-using Sporty.Models;
+
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -15,7 +15,7 @@ public class Dialogue
 {
     public static ConcurrentDictionary<long, Dialogue> RecentUsers = new();
 
-    public Person? Customer { get; private set; }
+    public DialogueData Data { get; private set; }
     public long LastActionTime { get; private set; }
     public long Id { get; private set; }
 
@@ -43,6 +43,7 @@ public class Dialogue
         _machine = new DialogueMachine(this);
         _botClient = botClient;
         Id = id;
+        Data = new();
     }
 
     private Dialogue(ITelegramBotClient botClient, Message lastRecievedMessage) : this(botClient, lastRecievedMessage.Chat.Id) => _lastRecievedMessage = lastRecievedMessage;
@@ -129,7 +130,7 @@ public class Dialogue
     {
         return await _botClient.SendTextMessageAsync(
             chatId: Id,
-            text: DialogueHelper.MenuText(Customer!.Name),
+            text: DialogueHelper.MenuText(Data.Customer.Name!),
             replyMarkup: DialogueHelper.MenuIkm,
             parseMode: ParseMode.Html);
     }

@@ -16,7 +16,7 @@ public static class DialogueHelper
 
     // --------------------------------------------------------------------------------
 
-    public static string WelcomeText = "<i>Приветсвенное сообщение</i>";
+    public static string WelcomeText = "Приветсвенное сообщение";
     public static string RegisterText = "Для начала вам необходимо <b>зарегистрироваться</b>";
     public static string RegSeqNameText = "Укажите имя";
     public static string RegSeqGenderText = "Укажите пол";
@@ -25,7 +25,7 @@ public static class DialogueHelper
     public static string RegSeqWeightText = "Укажите вес";
     public static string RegSeqEmailText = "Укажите электронную почту";
     public static string RegSeqUnknownText = "Произошла ошибка";
-    public static string MenuText(string name) => $"<b>Здравствуйте, {name}!</b>\n";
+    public static string MenuText(string name) => $"Здравствуйте, {name}!\n";
 
     public static InlineKeyboardMarkup RegisterIkm;
     public static InlineKeyboardMarkup GenderIkm;

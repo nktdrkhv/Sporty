@@ -13,6 +13,10 @@ public class DialoguePoll
 
     public DialoguePoll(params DialogueState[] stages) => _stages = stages;
 
+    public DialogueState First() => _stages[0];
+
+    public DialogueState Current() => _stages[_index];
+
     public DialogueState Next()
     {
         if (_index <= _stages.Length - 1)
@@ -24,7 +28,7 @@ public class DialoguePoll
         }
     }
 
-    public void Start()
+    public void Restart()
     {
         _index = 0;
         IsEnd = false;
