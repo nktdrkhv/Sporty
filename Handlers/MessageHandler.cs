@@ -17,7 +17,6 @@ public static class MessageHandler
 
     public static async Task OnMenuCommand(ITelegramBotClient botClient, Message message)
     {
-
     }
 
     public static async Task OnTextEnter(ITelegramBotClient botClient, Message message)

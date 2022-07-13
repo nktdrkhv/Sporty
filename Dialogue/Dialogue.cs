@@ -1,8 +1,4 @@
-using System;
-using System.Threading;
 using System.Collections.Concurrent;
-using Stateless;
-using Stateless.Graph;
 
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -24,17 +20,17 @@ public class Dialogue
 
     private Message? _lastRecievedMessage;
     private Message? _lastSentMessage;
-    private Message? _menuMessage;
+    private Message? _systemMessage;
 
     private bool _isInit = false;
     public async Task CheckInDb()
     {
         if (_isInit)
-            await _machine.FoundInDb();
+            await _machine.ProcessTransition(DialogueTrigger.IsInDb);
         else
         {
             _isInit = true;
-            await _machine.NotFoundInDb();
+            await _machine.ProcessTransition(DialogueTrigger.IsNotInDb);
         }
     }
 
@@ -44,6 +40,8 @@ public class Dialogue
         _botClient = botClient;
         Id = id;
         Data = new();
+        _machine.ActivateStateMachine().Wait();
+        Console.WriteLine("new dialogue");
     }
 
     private Dialogue(ITelegramBotClient botClient, Message lastRecievedMessage) : this(botClient, lastRecievedMessage.Chat.Id) => _lastRecievedMessage = lastRecievedMessage;
@@ -52,33 +50,49 @@ public class Dialogue
 
     public static async Task HandleTextInputAsync(ITelegramBotClient botClient, Message message)
     {
-        Dialogue currentDialogue = RecentUsers.GetOrAdd(message.Chat.Id, new Dialogue(botClient, message));
-        currentDialogue.LastActionTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (RecentUsers.TryGetValue(message.Chat.Id, out var currentDialogue))
+            currentDialogue.LastActionTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        else
+        {
+            currentDialogue = new Dialogue(botClient, message.Chat.Id);
+            currentDialogue.LastActionTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            RecentUsers.TryAdd(message.Chat.Id, currentDialogue);
+        }
 
-        Console.WriteLine($"message -- {message.Text}");
-
-        await currentDialogue._machine.ProcessTransition(message.Text ?? "Ошибка");
+        await currentDialogue._machine.ProcessTransition(message.Text ?? DialogueHelper.SeqUnknownText);
     }
 
     public static async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
-        Dialogue currentDialogue = RecentUsers.GetOrAdd(callbackQuery.From.Id, new Dialogue(botClient, callbackQuery.From.Id));
-        currentDialogue.LastActionTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (RecentUsers.TryGetValue(callbackQuery.From.Id, out var currentDialogue))
+            currentDialogue.LastActionTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        else
+        {
+            currentDialogue = new Dialogue(botClient, callbackQuery.From.Id);
+            currentDialogue.LastActionTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            RecentUsers.TryAdd(callbackQuery.From.Id, currentDialogue);
+        }
 
-        Console.WriteLine($"callback -- {callbackQuery.Data!.ToDialogueTrigger()}");
-
-        await currentDialogue._machine.ProcessTransition(callbackQuery.Data?.ToDialogueTrigger() ?? DialogueTrigger.BackToMenu);
+        await currentDialogue._machine.ProcessTransition(callbackQuery.Data?.ToDialogueTrigger() ?? DialogueTrigger.GoToMenu);
         await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
     }
 
     public static async Task HandleStartAsync(ITelegramBotClient botClient, Message message)
     {
-        Dialogue currentDialogue = RecentUsers.GetOrAdd(message.Chat.Id, new Dialogue(botClient, message));
-        currentDialogue.LastActionTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        await currentDialogue._machine.ActivateStateMachine();
+        if (RecentUsers.TryGetValue(message.Chat.Id, out var currentDialogue))
+            currentDialogue.LastActionTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        else
+        {
+            currentDialogue = new Dialogue(botClient, message.Chat.Id);
+            currentDialogue.LastActionTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            RecentUsers.TryAdd(message.Chat.Id, currentDialogue);
+        }
     }
 
     // ---------------------- Callbacks for Dialogue machine ----------------------
+    public async Task<Message> ClearSystemMessageReplyMarkup() => await ReplaceSystemMessageReplyMarkup(null);
+
+    public async Task<Message> ReplaceSystemMessageReplyMarkup(InlineKeyboardMarkup? ikm) => await _botClient.EditMessageReplyMarkupAsync(_systemMessage!.Chat.Id, _systemMessage.MessageId, ikm);
 
     public async Task<Message> SendWelcomeMessage()
     {
@@ -91,24 +105,35 @@ public class Dialogue
 
     public async Task<Message> SendRegisterWarningMessage()
     {
-        return await _botClient.SendTextMessageAsync(
+        await _botClient.SendChatActionAsync(Id, ChatAction.Typing);
+        var msg = await _botClient.SendTextMessageAsync(
             chatId: Id,
             text: DialogueHelper.RegisterText,
             replyMarkup: DialogueHelper.RegisterIkm,
             parseMode: ParseMode.Html);
+        _systemMessage = msg;
+        return msg;
     }
 
-    public async Task<Message> SendRegistrationSequence(DialogueState state)
+    public async Task<Message> SendDataInputErrorMessage(string? text = null)
+    {
+        return await _botClient.SendTextMessageAsync(
+            chatId: Id,
+            text: text ?? DialogueHelper.SeqDataErrorText,
+            parseMode: ParseMode.Html);
+    }
+
+    public async Task<Message> SendCustomerDataSequence(DialogueState state)
     {
         var text = state switch
         {
-            DialogueState.NameInput => DialogueHelper.RegSeqNameText,
-            DialogueState.GenderInput => DialogueHelper.RegSeqGenderText,
-            DialogueState.AgeInput => DialogueHelper.RegSeqAgeText,
-            DialogueState.HeightInput => DialogueHelper.RegSeqHeightText,
-            DialogueState.WeightInput => DialogueHelper.RegSeqWeightText,
-            DialogueState.EmailInput => DialogueHelper.RegSeqEmailText,
-            _ => DialogueHelper.RegSeqUnknownText,
+            DialogueState.NameInput => DialogueHelper.SeqNameText,
+            DialogueState.GenderInput => DialogueHelper.SeqGenderText,
+            DialogueState.AgeInput => DialogueHelper.SeqAgeText,
+            DialogueState.HeightInput => DialogueHelper.SeqHeightText,
+            DialogueState.WeightInput => DialogueHelper.SeqWeightText,
+            DialogueState.EmailInput => DialogueHelper.SeqEmailText,
+            _ => DialogueHelper.SeqUnknownText,
         };
 
         switch (state)
@@ -135,18 +160,35 @@ public class Dialogue
             parseMode: ParseMode.Html);
     }
 
-    public async Task<Message> SendCoachInfo()
+    public async Task<Message> SendCoachInformation()
     {
-        return null;
+        return await _botClient.SendTextMessageAsync(
+            chatId: Id,
+            text: DialogueHelper.CoachText,
+            replyMarkup: DialogueHelper.CoachIkm,
+            parseMode: ParseMode.Html);
     }
 
-    public async Task<Message> SendPersonalInfo()
+    public async Task<Message> SendPersonalInformation()
     {
-        return null;
+        return await _botClient.SendTextMessageAsync(
+            chatId: Id,
+            text: DialogueHelper.PersonalText(Data.Customer),
+            replyMarkup: DialogueHelper.PersonalInformationIkm,
+            parseMode: ParseMode.Html);
     }
 
-    public async Task<Message> SendPersonalFieldEditor(DialogueState state)
+    public async Task<Message> SendPersonalFieldEditor()
     {
-        return null;
+        return await _botClient.SendTextMessageAsync(
+            chatId: Id,
+            text: DialogueHelper.PersonalText(Data.Customer),
+            replyMarkup: DialogueHelper.PersonalFieldsIkm,
+            parseMode: ParseMode.Html);
     }
+
+    // public async Task<Message> SendPersonalFieldInput(DialogueState state)
+    // {
+    //     return null;
+    // }
 }
