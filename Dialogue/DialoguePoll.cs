@@ -2,24 +2,24 @@ namespace Sporty.Dialogue;
 
 public class DialoguePoll
 {
-    private DialogueState[] _stages;
+    private DialogueTrigger[] _steps;
     private int _index = 0;
 
-    public DialoguePoll(params DialogueState[] stages) => _stages = stages;
+    public DialoguePoll(params DialogueTrigger[] steps) => _steps = steps;
 
-    public DialogueState First() => _stages[0];
-    public DialogueState Current() => _stages[_index];
+    public DialogueTrigger First() => _steps[0];
+    public DialogueTrigger Current() => _steps[_index];
     public bool IsEnd { get; private set; } = false;
 
-    public DialogueState Next()
+    public DialogueTrigger Next()
     {
-        ++_index;
-        if (_index <= _stages.Length - 1)
-            return _stages[_index];
+        _index += 1;
+        if (_index <= _steps.Length - 1)
+            return _steps[_index];
         else
         {
             IsEnd = true;
-            return DialogueState.Null;
+            return DialogueTrigger.Null;
         }
     }
 

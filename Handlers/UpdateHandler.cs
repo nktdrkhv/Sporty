@@ -62,7 +62,24 @@ public static class UpdateHandler
 
     private static async Task BotOnCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
-        await CallbackQueryHandler.OnButtonPressed(botClient, callbackQuery);
+        var parts = callbackQuery.Data!.Split(' ');
+        Task action;
+        switch (parts[0])
+        {
+            case "=":
+                callbackQuery.Data = parts[1];
+                action = CallbackQueryHandler.OnTextEnter(botClient, callbackQuery);
+                break;
+            case "*":
+                callbackQuery.Data = parts[1];
+                action = CallbackQueryHandler.OnDoubleButtonPressed(botClient, callbackQuery);
+                break;
+            default:
+                action = CallbackQueryHandler.OnButtonPressed(botClient, callbackQuery);
+                break;
+        };
+
+        await action;
     }
 
     private static Task UnknownUpdateHandlerAsync(ITelegramBotClient botClient, Update update)

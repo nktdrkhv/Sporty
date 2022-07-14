@@ -11,20 +11,21 @@ public static class DialogueHelper
 
     // --------------------------------------------------------------------------------
 
+    public static string UnsupportedText = "<b>Неожиданно!</b>";
     public static string WelcomeText = "<i>Приветсвенное сообщение</i>";
     public static string RegisterText = "Для начала вам необходимо <b>зарегистрироваться</b>";
     public static string SeqDataErrorText = "Введены некорректные данные";
     public static string SeqNameText = "Укажите имя";
     public static string SeqGenderText = "Укажите пол";
     public static string SeqAgeText = "Укажите возраст";
-    public static string SeqHeightText = "Укажите рост";
-    public static string SeqWeightText = "Укажите вес";
+    public static string SeqHeightText = "Укажите рост в сантиметрах";
+    public static string SeqWeightText = "Укажите вес в килограмммах";
     public static string SeqEmailText = "Укажите электронную почту";
     public static string SeqUnknownText = "Произошла ошибка";
-    public static string MenuText(string name) => $"Здравствуйте, <b>{name}</b>!\n";
-    public static string CoachText => "Информация о <i>тренере</i>\nГрафик работы";
+    public static string MenuText(string name) => $"Здравствуйте, <b>{name}</b>!";
+    public static string CoachText => "Информация о <i>тренере</i>";
     public static string PersonalText(Person p) =>
-        "<b>Ваша персональная информация</b>\n" +
+        "<b>Персональная информация</b>\n" +
         $"\n<i>Имя:</i> {p.Name}" +
         $"\n<i>Пол:</i> {p.Gender}" +
         $"\n<i>Возраст:</i> {p.Age}" +
@@ -41,6 +42,7 @@ public static class DialogueHelper
     public static InlineKeyboardMarkup PersonalInformationIkm;
     public static InlineKeyboardMarkup PersonalFieldsIkm;
     public static InlineKeyboardMarkup RedoOrMenuIkm;
+    public static InlineKeyboardMarkup RedoIkm;
 
     public static InlineKeyboardButton MenuButton;
     public static InlineKeyboardButton RedoButton;
@@ -65,8 +67,8 @@ public static class DialogueHelper
             {
                 new []
                 {
-                    InlineKeyboardButton.WithCallbackData("Муж.", DialogueTrigger.MaleInput.ToString()),
-                    InlineKeyboardButton.WithCallbackData("Жен.", DialogueTrigger.FemaleInput.ToString())
+                    InlineKeyboardButton.WithCallbackData("Муж.", "= Мужчина"),
+                    InlineKeyboardButton.WithCallbackData("Жен.", "= Женщина")
                 }
             });
         MenuIkm = new(
@@ -74,11 +76,11 @@ public static class DialogueHelper
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("Посмотреть информацию о тренере", DialogueTrigger.ConnectWithCoach.ToString())
+                    InlineKeyboardButton.WithCallbackData("Информация о тренере", DialogueTrigger.ConnectWithCoach.ToString())
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("Посмотреть личные данные", DialogueTrigger.WatchPersonalInformation.ToString())
+                    InlineKeyboardButton.WithCallbackData("Личные данные", DialogueTrigger.WatchPersonalInformation.ToString())
                 }
             });
         CoachIkm = new(
@@ -86,7 +88,7 @@ public static class DialogueHelper
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithUrl("Написать тренеру", @"tg://nktdrkhv"),
+                    InlineKeyboardButton.WithUrl("Написать тренеру", @"https://t.me/nktdrkhv"),
                     MenuButton
                 },
             });
@@ -110,18 +112,18 @@ public static class DialogueHelper
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("Имя", DialogueTrigger.NameChange.ToString()),
-                    InlineKeyboardButton.WithCallbackData("Пол", DialogueTrigger.GenderChange.ToString()),
-                    InlineKeyboardButton.WithCallbackData("Возраст", DialogueTrigger.AgeChange.ToString()),
+                    InlineKeyboardButton.WithCallbackData("Имя", "* " + DialogueTrigger.NameChange.ToString()),
+                    InlineKeyboardButton.WithCallbackData("Пол", "* " + DialogueTrigger.GenderChange.ToString()),
+                    InlineKeyboardButton.WithCallbackData("Возраст", "* " + DialogueTrigger.AgeChange.ToString()),
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("Рост", DialogueTrigger.HeightChange.ToString()),
-                    InlineKeyboardButton.WithCallbackData("Вес", DialogueTrigger.WeightChange.ToString()),
+                    InlineKeyboardButton.WithCallbackData("Рост", "* " + DialogueTrigger.HeightChange.ToString()),
+                    InlineKeyboardButton.WithCallbackData("Вес", "* " + DialogueTrigger.WeightChange.ToString()),
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("Электронная почта", DialogueTrigger.EmailChange.ToString()),
+                    InlineKeyboardButton.WithCallbackData("Электронная почта", "* " + DialogueTrigger.EmailChange.ToString()),
                 }
             });
         RedoOrMenuIkm = new(
@@ -131,6 +133,14 @@ public static class DialogueHelper
                 {
                     RedoButton,
                     MenuButton,
+                }
+            });
+        RedoIkm = new(
+            new[]
+            {
+                new[]
+                {
+                    RedoButton,
                 }
             });
     }

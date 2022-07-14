@@ -1,4 +1,3 @@
-using FluentValidation;
 using Stateless;
 
 using Sporty.Data;
@@ -8,12 +7,12 @@ namespace Sporty.Dialogue;
 public class DialogueMachine
 {
     private Dialogue _dialogue;
+    private DialoguePoll _registrationPoll;
+    private DialogueTrigger? _lastTrigger;
 
     private StateMachine<DialogueState, DialogueTrigger> _stateMachine;
     private StateMachine<DialogueState, DialogueTrigger>.TriggerWithParameters<string> _setTextTrigger;
-
-    private DialoguePoll _registrationPoll;
-    private PersonValidator _validator = new();
+    private StateMachine<DialogueState, DialogueTrigger>.TriggerWithParameters<DialogueTrigger> _setDoubleTrigger;
 
     public DialogueMachine(Dialogue dialogue)
     {
@@ -21,14 +20,15 @@ public class DialogueMachine
 
         _stateMachine = new StateMachine<DialogueState, DialogueTrigger>(DialogueState.Initialization);
         _setTextTrigger = _stateMachine.SetTriggerParameters<string>(DialogueTrigger.TextInput);
+        _setDoubleTrigger = _stateMachine.SetTriggerParameters<DialogueTrigger>(DialogueTrigger.TriggerInput);
 
         _registrationPoll = new DialoguePoll(
-            DialogueState.NameInput,
-            DialogueState.GenderInput,
-            DialogueState.AgeInput,
-            DialogueState.HeightInput,
-            DialogueState.WeightInput,
-            DialogueState.EmailInput
+            DialogueTrigger.NameChange,
+            DialogueTrigger.GenderChange,
+            DialogueTrigger.AgeChange,
+            DialogueTrigger.HeightChange,
+            DialogueTrigger.WeightChange,
+            DialogueTrigger.EmailChange
         );
 
         Configure();
@@ -36,8 +36,10 @@ public class DialogueMachine
 
     // ---------------------- Configurations ----------------------
 
-    public void Configure()
+    private void Configure()
     {
+        _stateMachine.OnUnhandledTriggerAsync(async (state, trigger) => await _dialogue.SendUnsupportedInputMessageAsync());
+
         _stateMachine.Configure(DialogueState.Initialization)
             .Permit(DialogueTrigger.IsInDb, DialogueState.Menu)
             .Permit(DialogueTrigger.IsNotInDb, DialogueState.Unregistered)
@@ -47,104 +49,89 @@ public class DialogueMachine
             .Permit(DialogueTrigger.SignUp, DialogueState.Registration)
             .OnEntryAsync(async () =>
             {
-                await _dialogue.SendWelcomeMessage();
-                await _dialogue.SendRegisterWarningMessage();
+                await _dialogue.SendWelcomeMessageAsync();
+                await _dialogue.SendRegisterWarningAsync();
             })
-            .OnExitAsync(async () => await _dialogue.ClearSystemMessageReplyMarkup());
+            .OnExitAsync(async () => await _dialogue.RegistrationApproveActions()); //
 
         _stateMachine.Configure(DialogueState.Registration)
-            .OnEntryAsync(async () => await _dialogue.SendCustomerDataSequence(_registrationPoll.First()))
-            .InternalTransitionAsync<string>(_setTextTrigger, async (text, t) =>
+            .OnEntryAsync(async () => await _dialogue.SendCustomerDataSequenceAsync(_registrationPoll.First()))
+            .InternalTransitionAsync<string>(_setTextTrigger, async (text, _) =>
             {
                 try
                 {
-                    //var person = _dialogue.Data.Customer;
                     switch (_registrationPoll.Current())
-                    {//validate and theow don't take more then one args
-                        case DialogueState.NameInput:
-                            _dialogue.Data.Customer.Name = text;
-                            _validator.Validate(_dialogue.Data.Customer, x => x.IncludeProperties(x => x.Name));
-                            break;
-                        case DialogueState.AgeInput:
-                            _dialogue.Data.Customer.Age = int.Parse(text);
-                            _validator.Validate(_dialogue.Data.Customer, x => x.IncludeProperties(x => x.Age));
-                            break;
-                        case DialogueState.HeightInput:
-                            _dialogue.Data.Customer.Height = int.Parse(text);
-                            _validator.Validate(_dialogue.Data.Customer, x => x.IncludeProperties(x => x.Height));
-                            break;
-                        case DialogueState.WeightInput:
-                            _dialogue.Data.Customer.Weight = int.Parse(text);
-                            _validator.Validate(_dialogue.Data.Customer, x => x.IncludeProperties(x => x.Weight));
-                            break;
-                        case DialogueState.EmailInput:
-                            _dialogue.Data.Customer.Email = text;
-                            _validator.Validate(_dialogue.Data.Customer, x => x.IncludeProperties(x => x.Email));
-                            break;
-                        default:
-                            return;
+                    {
+                        case DialogueTrigger.NameChange: _dialogue.Data.Customer.Name = PersonValidator.Name(text); break;
+                        case DialogueTrigger.GenderChange: _dialogue.Data.Customer.Gender = PersonValidator.Gender(text); break;
+                        case DialogueTrigger.AgeChange: _dialogue.Data.Customer.Age = PersonValidator.Age(text); break;
+                        case DialogueTrigger.HeightChange: _dialogue.Data.Customer.Height = PersonValidator.Height(text); break;
+                        case DialogueTrigger.WeightChange: _dialogue.Data.Customer.Weight = PersonValidator.Weight(text); break;
+                        case DialogueTrigger.EmailChange: _dialogue.Data.Customer.Email = PersonValidator.Email(text); break;
+                        default: return;
                     };
                 }
-                catch (ValidationException e)
+                catch (ArgumentException e)
                 {
-                    await _dialogue.SendDataInputErrorMessage(e.Message);
-                    await _dialogue.SendCustomerDataSequence(_registrationPoll.Current());
-                    return;
-                }
-                catch
-                {
-                    await _dialogue.SendDataInputErrorMessage();
-                    await _dialogue.SendCustomerDataSequence(_registrationPoll.Current());
+                    await _dialogue.SendDataInputErrorAsync(e.Message);
                     return;
                 }
 
                 var nextState = _registrationPoll.Next();
-                if (nextState is not DialogueState.Null)
-                    await _dialogue.SendCustomerDataSequence(nextState);
+                if (nextState is not DialogueTrigger.Null)
+                    await _dialogue.SendCustomerDataSequenceAsync(nextState);
                 else
                     await _stateMachine.FireAsync(DialogueTrigger.GoToMenu);
             })
-            .InternalTransitionAsync(DialogueTrigger.MaleInput, async () =>
-            {
-                _dialogue.Data.Customer.Gender = "Мужской";
-
-                var nextState = _registrationPoll.Next();
-                if (nextState is not DialogueState.Null)
-                    await _dialogue.SendCustomerDataSequence(nextState);
-                else
-                    await _stateMachine.FireAsync(DialogueTrigger.GoToMenu);
-            })
-            .InternalTransitionAsync(DialogueTrigger.FemaleInput, async () =>
-            {
-                _dialogue.Data.Customer.Gender = "Женский";
-
-                var nextState = _registrationPoll.Next();
-                if (nextState is not DialogueState.Null)
-                    await _dialogue.SendCustomerDataSequence(nextState);
-                else
-                    await _stateMachine.FireAsync(DialogueTrigger.GoToMenu);
-            })
-
             .Permit(DialogueTrigger.GoToMenu, DialogueState.Menu);
 
         _stateMachine.Configure(DialogueState.Menu)
-            .OnEntryAsync(async () => await _dialogue.SendMenu())
+            .OnEntryAsync(async () => await _dialogue.SendMenuAsync())
             .Permit(DialogueTrigger.WatchPersonalInformation, DialogueState.PersonalInformationView)
             .Permit(DialogueTrigger.ConnectWithCoach, DialogueState.CoachInformationView);
 
         _stateMachine.Configure(DialogueState.PersonalInformationView)
-            .OnEntryAsync(async () => await _dialogue.SendPersonalInformation())
+            .OnEntryAsync(async () => await _dialogue.SendPersonalInformationAsync())
             .Permit(DialogueTrigger.GoToMenu, DialogueState.Menu)
             .Permit(DialogueTrigger.EditPersonalInformation, DialogueState.PersonalInformationChange);
 
         _stateMachine.Configure(DialogueState.PersonalInformationChange)
-            .OnEntryAsync(async () => await _dialogue.SendPersonalFieldEditor())
-            //.OnExit
+            .OnEntryAsync(async () => await _dialogue.SendPersonalFieldEditorAsync())
             .Permit(DialogueTrigger.GoToMenu, DialogueState.Menu)
-            .Permit(DialogueTrigger.Redo, DialogueState.PersonalInformationView);
+            .Permit(DialogueTrigger.Redo, DialogueState.PersonalInformationView)
+            .Permit(DialogueTrigger.WatchPersonalInformation, DialogueState.PersonalInformationView)
+            .InternalTransitionAsync(_setDoubleTrigger, async (trigger, t) =>
+            {
+                _lastTrigger = trigger;
+                await _dialogue.SendCustomerDataSequenceAsync(trigger);
+            })
+            .InternalTransitionAsync<string>(_setTextTrigger, async (text, t) =>
+            {
+                try
+                {
+                    switch (_lastTrigger)
+                    {
+                        case DialogueTrigger.NameChange: _dialogue.Data.Customer.Name = PersonValidator.Name(text); break;
+                        case DialogueTrigger.GenderChange: _dialogue.Data.Customer.Gender = PersonValidator.Gender(text); break;
+                        case DialogueTrigger.AgeChange: _dialogue.Data.Customer.Age = PersonValidator.Age(text); break;
+                        case DialogueTrigger.HeightChange: _dialogue.Data.Customer.Height = PersonValidator.Height(text); break;
+                        case DialogueTrigger.WeightChange: _dialogue.Data.Customer.Weight = PersonValidator.Weight(text); break;
+                        case DialogueTrigger.EmailChange: _dialogue.Data.Customer.Email = PersonValidator.Email(text); break;
+                        default: return;
+                    };
+                }
+                catch (ArgumentException e)
+                {
+                    await _dialogue.SendDataInputErrorAsync(e.Message);
+                }
+                finally
+                {
+                    await _stateMachine.FireAsync(DialogueTrigger.WatchPersonalInformation);
+                }
+            });
 
         _stateMachine.Configure(DialogueState.CoachInformationView)
-            .OnEntryAsync(async () => await _dialogue.SendCoachInformation())
+            .OnEntryAsync(async () => await _dialogue.SendCoachInformationAsync())
             .Permit(DialogueTrigger.GoToMenu, DialogueState.Menu);
     }
 
@@ -153,6 +140,8 @@ public class DialogueMachine
     public async Task ActivateStateMachine() => await _stateMachine.ActivateAsync();
 
     public async Task ProcessTransition(DialogueTrigger trigger) => await _stateMachine.FireAsync(trigger);
+
+    public async Task ProcessDoubleTransition(DialogueTrigger trigger) => await _stateMachine.FireAsync(_setDoubleTrigger, trigger);
 
     public async Task ProcessTransition(string text) => await _stateMachine.FireAsync(_setTextTrigger, text);
 }

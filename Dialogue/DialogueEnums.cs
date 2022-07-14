@@ -3,16 +3,15 @@ namespace Sporty.Dialogue;
 public enum DialogueTrigger
 {
     SignUp, IsInDb, IsNotInDb,
-    TextInput, MaleInput, FemaleInput,
-    WatchPersonalInformation, EditPersonalInformation, ConnectWithCoach,
+    TextInput, TriggerInput,
     NameChange, GenderChange, AgeChange, HeightChange, WeightChange, EmailChange,
-    Redo, GoToMenu,
+    WatchPersonalInformation, EditPersonalInformation, ConnectWithCoach,
+    Redo, GoToMenu, Null
 }
 
 public enum DialogueState
 {
     Initialization, Unregistered, Registration,
-    NameInput, GenderInput, AgeInput, HeightInput, WeightInput, EmailInput,
     PersonalInformationView, PersonalInformationChange, CoachInformationView,
     Menu, Null
 }
