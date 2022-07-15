@@ -59,7 +59,8 @@ public static class DialogueHelper
             {
                 new []
                 {
-                    InlineKeyboardButton.WithCallbackData("Регистрация", DialogueTrigger.SignUp.ToString())
+                    InlineKeyboardButton.WithCallbackData("Регистрация", DialogueTrigger.SignUp.ToString()),
+                    InlineKeyboardButton.WithCallbackData("Купить программу", DialogueTrigger.ProgramPurchase.ToString()) // test
                 }
             });
         GenderIkm = new(

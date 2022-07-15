@@ -4,6 +4,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using Telegram.Bot.Types.Payments;
 
 namespace Sporty.Dialogue;
 
@@ -28,6 +29,7 @@ public class Dialogue
     private DialogueMachine _machine;
     private ITelegramBotClient _botClient;
 
+    private List<PreCheckoutQuery> _preCheckoutQueries = new();
     private CallbackQuery? _lastRecievedCallbackQuery;
     private Message? _lastRecievedMessage;
 
@@ -130,6 +132,8 @@ public class Dialogue
         await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
     }
 
+    #region COMMANDS
+
     public static async Task HandleStartCommandAsync(ITelegramBotClient botClient, Message message)
     {
         var currentDialogue = GetDialogue(botClient, message.From!.Id);
@@ -140,6 +144,28 @@ public class Dialogue
     }
 
     public static async Task HandleMenuCommandAsync(ITelegramBotClient botClient, Message message) => await Task.Delay(1000);
+
+    #endregion
+
+    public static async Task HandlePaymentConfirm(ITelegramBotClient botClient, PreCheckoutQuery preCheckoutQuery)
+    {
+        var currentDialogue = GetDialogue(botClient, preCheckoutQuery.From.Id);
+        if (currentDialogue is null)
+            return;
+        currentDialogue._preCheckoutQueries.Add(preCheckoutQuery);
+        await botClient.AnswerPreCheckoutQueryAsync(preCheckoutQuery.Id);
+        await currentDialogue._machine.ProcessTransition(DialogueTrigger.ConfirmPurchase);
+    }
+
+    public static async Task HandlePaymentSuccess(ITelegramBotClient botClient, Message message)
+    {
+        var currentDialogue = GetDialogue(botClient, message.From!.Id);
+        if (currentDialogue is null)
+            return;
+        currentDialogue._lastRecievedMessage = message;
+        await currentDialogue._machine.ProcessTransition(DialogueTrigger.SuccessPurchase);
+    }
+
 
     #endregion
 
@@ -287,6 +313,35 @@ public class Dialogue
             await ReplaceMarkupAsync(_systemMessage!, DialogueHelper.PersonalFieldsIkm);
         return _systemMessage!;
     }
+
+    #region PURCHASE PROCESSING
+
+    public async Task<Message> SendProductAsync()
+    {
+        _lastSentMessage = await _botClient.SendInvoiceAsync(
+            chatId: Id,
+            title: "Программа тренировок",
+            description: "Составленная исключительно для вас",
+            payload: "testPay",
+            providerToken: "401643678:TEST:05135caa-75eb-465b-9e48-48171178a0c7",
+            currency: "RUB",
+            prices: new[] { new LabeledPrice("ПрОгРаМмА", 100000) });
+        return _lastSentMessage;
+    }
+
+    public async Task<Message> SendPurchaseConfirmationAsync()
+    {
+        _lastSentMessage = await SendMessageAsync(Id, "Покупка подтверждена, ожидаем ответ Сбербанка");
+        return _lastSentMessage;
+    }
+
+    public async Task<Message> SendPurchaseSuccessAsync()
+    {
+        _lastSentMessage = await SendMessageAsync(Id, "Покупка успешна, ожидайте письма в течение следующих суток");
+        return _lastSentMessage;
+    }
+
+    #endregion
 
     #endregion
 }

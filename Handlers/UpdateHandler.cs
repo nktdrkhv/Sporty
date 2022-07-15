@@ -2,7 +2,7 @@ using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Stateless;
+using Telegram.Bot.Types.Payments;
 
 namespace Sporty.Handlers;
 
@@ -26,12 +26,12 @@ public static class UpdateHandler
         {
             UpdateType.Message => BotOnMessageAsync(botClient, update.Message!),
             UpdateType.CallbackQuery => BotOnCallbackQueryAsync(botClient, update.CallbackQuery!),
+            UpdateType.PreCheckoutQuery => BotOnPreCheckoutQueryAsync(botClient, update.PreCheckoutQuery!),
             _ => UnknownUpdateHandlerAsync(botClient, update)
         };
 
         try
         {
-            Console.WriteLine();
             await handler;
         }
         catch (InvalidOperationException)
@@ -46,19 +46,22 @@ public static class UpdateHandler
 
     private static async Task BotOnMessageAsync(ITelegramBotClient botClient, Message message)
     {
-        if (message.Type != MessageType.Text)
-            return;
-
-        var action = message.Text!.Split(' ')[0] switch
+        if (message.Type == MessageType.Text)
         {
-            "/start" => MessageHandler.OnStartCommand(botClient, message),
-            "/menu" => MessageHandler.OnMenuCommand(botClient, message),
-            _ => MessageHandler.OnTextEnter(botClient, message)
-        };
-
-        await action;
+            var action = message.Text!.Split(' ')[0] switch
+            {
+                "/start" => MessageHandler.OnStartCommand(botClient, message),
+                "/menu" => MessageHandler.OnMenuCommand(botClient, message),
+                _ => MessageHandler.OnTextEnter(botClient, message)
+            };
+            await action;
+        }
+        else if (message.Type == MessageType.SuccessfulPayment)
+        {
+            var action = PaymentsHandler.OnPaymentSuccess(botClient, message);
+            await action;
+        }
     }
-
 
     private static async Task BotOnCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery)
     {
@@ -81,6 +84,8 @@ public static class UpdateHandler
 
         await action;
     }
+
+    private static async Task BotOnPreCheckoutQueryAsync(ITelegramBotClient botClient, PreCheckoutQuery preCheckoutQuery) => await PaymentsHandler.OnPaymentPreCheckout(botClient, preCheckoutQuery);
 
     private static Task UnknownUpdateHandlerAsync(ITelegramBotClient botClient, Update update)
     {

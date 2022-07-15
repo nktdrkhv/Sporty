@@ -47,12 +47,28 @@ public class DialogueMachine
 
         _stateMachine.Configure(DialogueState.Unregistered)
             .Permit(DialogueTrigger.SignUp, DialogueState.Registration)
+            .Permit(DialogueTrigger.ProgramPurchase, DialogueState.PurchaseDecision) // test
+            .InternalTransitionAsync(DialogueTrigger.SuccessPurchase, async () => await _dialogue.SendPurchaseSuccessAsync())
             .OnEntryAsync(async () =>
             {
                 await _dialogue.SendWelcomeMessageAsync();
                 await _dialogue.SendRegisterWarningAsync();
             })
             .OnExitAsync(async () => await _dialogue.RegistrationApproveActions()); //
+
+        // ---------
+
+        _stateMachine.Configure(DialogueState.PurchaseDecision)
+            .OnEntryAsync(async () => await _dialogue.SendProductAsync())
+            .Permit(DialogueTrigger.ConfirmPurchase, DialogueState.Unregistered)
+            .Permit(DialogueTrigger.Redo, DialogueState.Unregistered)
+            .OnExitAsync(async (t) =>
+            {
+                if (t.Trigger == DialogueTrigger.ConfirmPurchase)
+                    await _dialogue.SendPurchaseConfirmationAsync();
+            });
+
+        // --------
 
         _stateMachine.Configure(DialogueState.Registration)
             .OnEntryAsync(async () => await _dialogue.SendCustomerDataSequenceAsync(_registrationPoll.First()))
@@ -100,7 +116,7 @@ public class DialogueMachine
             .Permit(DialogueTrigger.GoToMenu, DialogueState.Menu)
             .Permit(DialogueTrigger.Redo, DialogueState.PersonalInformationView)
             .Permit(DialogueTrigger.WatchPersonalInformation, DialogueState.PersonalInformationView)
-            .InternalTransitionAsync(_setDoubleTrigger, async (trigger, t) =>
+            .InternalTransitionAsync<DialogueTrigger>(_setDoubleTrigger, async (trigger, t) =>
             {
                 _lastTrigger = trigger;
                 await _dialogue.SendCustomerDataSequenceAsync(trigger);
